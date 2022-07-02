@@ -1094,5 +1094,120 @@ namespace ExpMediaCore.Repository.Service
                          }).AsNoTracking().OrderBy(e => e.DateCreation).ToListAsync();
             return obj;
         }
+
+        public async Task<SampView> GetActivityNotfication(string userId)
+        {
+
+            // User whom created the activity would received a notification from the user
+            // who had commented in his activity post.
+            var comments = await (from p in _context.Comments
+                                  join py in _context.Activities on p.ActivityId equals py.Id
+
+                                  where py.ActivityUserId == p.ActivityUserId
+                                  where py.ActivityUserId == userId
+                                  select new CommentView
+                                  {
+                                      AuthorId = p.AuthorId,
+                                      Body = p.Body,
+                                      Image = p.Image,
+                                      CommentId = p.Id,
+                                      ActivityId = p.ActivityId,
+                                      Commentor = p.Author.FirstName + " " + p.Author.LastName
+                                  }).AsNoTracking().ToListAsync();
+
+            // User whom created the activity would received a notification from the user
+            // who had sent a request to be 'in' on his activity post.
+            List<AttendeesRequest> activityRequests = await RequestingActivity(userId);
+
+            // Check if login user is the host of that activity
+            // If true, any comment reaction that belong to the activity would send him a notification.
+            var activityHost = _context.Comments
+                .Where(w => w.ActivityUserId == userId)
+                .Select(w => w.ActivityUserId).ToList();
+
+
+            // The user who created the comment must receive notification from the user who likes/heart their comment
+            // to that specific post.
+            // Or the user who created the post could see the comments, comment reaction that are linked on that activity.
+            List<CommentReactionUser> commentReaction = await GetCommentReaction(userId, activityHost);
+
+            var userCreatedActivityIds = _context.Activities
+             .Where(w => w.ActivityUserId == userId)
+             .Select(w => w.Id).ToList();
+
+            List<ShareActivityViewNotif> sharedUserNotif = await SharedNotification(userCreatedActivityIds);
+
+            // User who had tagged bby someone will be having a notification that tells him he was tagged to that post.
+            List<TagUserViewNotif> taggedView = await TaggedNotification(userId);
+
+            return new SampView()
+            {
+                // To show the inner results of comment, the /api/Activities/viewActivity/{activityId} would be the route.
+                CommentsView = comments,
+                // To show the inner results of comment, the /api/Activities/viewActivity/{activityId} would be the route.
+                ActivityUserRequests = activityRequests,
+                // To show the inner results of comment, the /api/Activities/viewActivity/{activityId} would be the route.
+                CommentReactors = commentReaction,
+                // To show the inner results of comment, the /api/Activities/viewActivity/{activityId} would be the route.
+                SharedActivities = sharedUserNotif,
+                // To show the inner results of comment, the /api/Activities/viewActivity/{activityId} would be the route.
+                TaggedUsers = taggedView,
+            };
+        }
+
+        private async Task<List<TagUserViewNotif>> TaggedNotification(string userId)
+        {
+            return await (from p in _context.TagUsers
+                          where p.UserToTagId == userId
+                          select new TagUserViewNotif
+                          {
+                              ActivityId = p.ActivityId,
+                              DateTagged = p.DateCreated,
+                              WhoTaggedYou = p.UserWhoTagged.FirstName + " " + p.UserWhoTagged.LastName
+                          }).AsNoTracking().ToListAsync();
+        }
+        private async Task<List<ShareActivityViewNotif>> SharedNotification(List<int> userCreatedActivityIds)
+        {
+            return await (from p in _context.SharingActivities
+                          where userCreatedActivityIds.Contains(p.ActivityId)
+                          select new ShareActivityViewNotif
+                          {
+                              ActivityId = p.ActivityId,
+                              DateShared = p.DateShared,
+                              WhoSharedYourActivity = p.SharedUser.FirstName + " " + p.SharedUser.LastName,
+                              IsSharedOnlyMe = p.OnlyMe == true
+                          }).AsNoTracking().ToListAsync();
+        }
+        private async Task<List<CommentReactionUser>> GetCommentReaction(string userId, List<string> activityHost)
+        {
+            return await (from p in _context.CommentReactions
+                          join pu in _context.Comments on p.CommentId equals pu.Id
+                          where (p.CommentCreatedUserId == userId && pu.AuthorId == userId)
+                          || activityHost.Contains(pu.ActivityUserId)
+                          select new CommentReactionUser
+                          {
+                              ActivityId = pu.ActivityId,
+                              CommentReactorId = p.Id,
+                              CommentReactor = p.User.FirstName + " " + p.User.LastName,
+                              Heart = p.Heart,
+                              Likes = p.Like
+                          }).AsNoTracking().ToListAsync();
+        }
+        private async Task<List<AttendeesRequest>> RequestingActivity(string userId)
+        {
+            return await (from f in _context.Activities
+                          join fr in _context.ActivityAttendees
+                          on f.Id equals fr.ActivityId
+                          where fr.IsAccepted == null
+                          where fr.ActivityCreatedUserId == userId
+                          select new AttendeesRequest()
+                          {
+                              ActivityAttendeeId = fr.Id,
+                              RequestJoin = fr.DateRequest,
+                              UserId = fr.UserId,
+                              Username = fr.User.FirstName + " " + fr.User.LastName,
+                              IsAccepted = fr.IsAccepted
+                          }).ToListAsync();
+        }
     }
 }

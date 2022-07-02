@@ -21,6 +21,6 @@ namespace ExpMediaCore.Repository.IService
         Task DeleteActivity(int activityId);
 
         Task<ActivityAndNotifView> GetFeedActivities(string userId);
-
+        Task<SampView> GetActivityNotfication(string userId);
     }
 }
