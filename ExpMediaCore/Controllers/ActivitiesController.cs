@@ -1540,7 +1540,6 @@ namespace ExpMediaCore.Controllers
 
             return new SampView()
             {
-                //Sample comment
                 // To show the inner results of comment, the /api/Activities/viewActivity/{activityId} would be the route.
                 CommentsView = comments,
                 // To show the inner results of comment, the /api/Activities/viewActivity/{activityId} would be the route.
