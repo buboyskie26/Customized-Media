@@ -1344,9 +1344,6 @@ namespace ExpMediaCore.Controllers
                                         }).ToList(),
                 })
                 .ToListAsync() : null;
-
-
-
             return userInfo;
         }
         [HttpGet("memories")]

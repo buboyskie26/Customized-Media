@@ -9,7 +9,8 @@ using System.Threading.Tasks;
 
 namespace ExpMediaCore.Base
 {
-    public class EntityBaseRepository<T> : IEntityBaseRepository<T> where T : class
+    public class EntityBaseRepository<T> : IEntityBaseRepository<T>
+        where T : class
     {
         private readonly DataContext _context;
 
