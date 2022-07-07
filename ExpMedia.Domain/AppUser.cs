@@ -23,11 +23,7 @@ namespace ExpMedia.Domain
         public ICollection<BlockUsers> ListOfToBlockUser { get; set; }
         public ICollection<ActivityNotification> NotifyToUser { get; set; }
         public ICollection<CommentReaction> CommentUser { get; set; }
-        /*        public ICollection<UserFollowing> Followers { get; set; }*/
-
-        /*   public ICollection<Photo> Photos { get; set; }
-           public ICollection<UserFollowing> Followings { get; set; }
-           public ICollection<UserFollowing> Followers { get; set; }
-           public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();*/
+      /*  public ICollection<Messages> MessageToUsers { get; set; }*/
+ 
     }
 }

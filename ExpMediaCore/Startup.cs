@@ -75,6 +75,7 @@ namespace ExpMediaCore
             services.AddResponseCaching();
             services.AddScoped<IActivity, ActivityRepository>();
             services.AddScoped<IActivityAttendeeRepository, ActivityAttendeeRepository>();
+            services.AddScoped<IMessage, MessageRepository>();
 
 
             services.AddAutoMapper(typeof(AutoMapperProfile));

@@ -4,14 +4,16 @@ using ExpMedia.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace ExpMedia.Persistence.Migrations
 {
     [DbContext(typeof(DataContext))]
-    partial class DataContextModelSnapshot : ModelSnapshot
+    [Migration("20220704002640_dfg")]
+    partial class dfg
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -343,7 +345,7 @@ namespace ExpMedia.Persistence.Migrations
                     b.ToTable("CommentReactions");
                 });
 
-            modelBuilder.Entity("ExpMedia.Domain.MessageTable", b =>
+            modelBuilder.Entity("ExpMedia.Domain.MessageTo", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -352,6 +354,9 @@ namespace ExpMedia.Persistence.Migrations
 
                     b.Property<string>("MessageById")
                         .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("MessageCreated")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("MessageToUserId")
                         .HasColumnType("nvarchar(450)");
@@ -362,59 +367,7 @@ namespace ExpMedia.Persistence.Migrations
 
                     b.HasIndex("MessageToUserId");
 
-                    b.ToTable("MessageTables");
-                });
-
-            modelBuilder.Entity("ExpMedia.Domain.Messages", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
-
-                    b.Property<string>("Body")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("MessageById")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<DateTime>("MessageCreated")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("MessageTableId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("MessageById");
-
-                    b.HasIndex("MessageTableId");
-
-                    b.ToTable("Messagesx");
-                });
-
-            modelBuilder.Entity("ExpMedia.Domain.MessagesGroup", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
-
-                    b.Property<DateTime>("GroupCreation")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("GroupName")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("UserMadeById")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserMadeById");
-
-                    b.ToTable("MessagesGroups");
+                    b.ToTable("MessageTo");
                 });
 
             modelBuilder.Entity("ExpMedia.Domain.SharingActivity", b =>
@@ -443,55 +396,6 @@ namespace ExpMedia.Persistence.Migrations
                     b.HasIndex("SharedUserId");
 
                     b.ToTable("SharingActivities");
-                });
-
-            modelBuilder.Entity("ExpMedia.Domain.SubMessageGroup", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
-
-                    b.Property<string>("MessageToUserId")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<int>("MessagesGroupId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("MessageToUserId");
-
-                    b.HasIndex("MessagesGroupId");
-
-                    b.ToTable("SubMessageGroups");
-                });
-
-            modelBuilder.Entity("ExpMedia.Domain.SubUserMessages", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
-
-                    b.Property<string>("Body")
-                        .HasMaxLength(80)
-                        .HasColumnType("nvarchar(80)");
-
-                    b.Property<int>("GroupId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("MessageCreation")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("SubMessageGroupId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SubMessageGroupId");
-
-                    b.ToTable("SubUserMessages");
                 });
 
             modelBuilder.Entity("ExpMedia.Domain.TagUser", b =>
@@ -816,45 +720,19 @@ namespace ExpMedia.Persistence.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("ExpMedia.Domain.MessageTable", b =>
+            modelBuilder.Entity("ExpMedia.Domain.MessageTo", b =>
                 {
                     b.HasOne("ExpMedia.Domain.AppUser", "MessageBy")
                         .WithMany()
                         .HasForeignKey("MessageById");
 
                     b.HasOne("ExpMedia.Domain.AppUser", "MessageToUser")
-                        .WithMany()
+                        .WithMany("MessageToUsers")
                         .HasForeignKey("MessageToUserId");
 
                     b.Navigation("MessageBy");
 
                     b.Navigation("MessageToUser");
-                });
-
-            modelBuilder.Entity("ExpMedia.Domain.Messages", b =>
-                {
-                    b.HasOne("ExpMedia.Domain.AppUser", "MessageBy")
-                        .WithMany()
-                        .HasForeignKey("MessageById");
-
-                    b.HasOne("ExpMedia.Domain.MessageTable", "MessageTable")
-                        .WithMany("Messagesx")
-                        .HasForeignKey("MessageTableId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("MessageBy");
-
-                    b.Navigation("MessageTable");
-                });
-
-            modelBuilder.Entity("ExpMedia.Domain.MessagesGroup", b =>
-                {
-                    b.HasOne("ExpMedia.Domain.AppUser", "UserMadeBy")
-                        .WithMany()
-                        .HasForeignKey("UserMadeById");
-
-                    b.Navigation("UserMadeBy");
                 });
 
             modelBuilder.Entity("ExpMedia.Domain.SharingActivity", b =>
@@ -872,34 +750,6 @@ namespace ExpMedia.Persistence.Migrations
                     b.Navigation("Activity");
 
                     b.Navigation("SharedUser");
-                });
-
-            modelBuilder.Entity("ExpMedia.Domain.SubMessageGroup", b =>
-                {
-                    b.HasOne("ExpMedia.Domain.AppUser", "MessageToUser")
-                        .WithMany()
-                        .HasForeignKey("MessageToUserId");
-
-                    b.HasOne("ExpMedia.Domain.MessagesGroup", "MessagesGroup")
-                        .WithMany("SubMessageGroups")
-                        .HasForeignKey("MessagesGroupId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("MessagesGroup");
-
-                    b.Navigation("MessageToUser");
-                });
-
-            modelBuilder.Entity("ExpMedia.Domain.SubUserMessages", b =>
-                {
-                    b.HasOne("ExpMedia.Domain.SubMessageGroup", "MessagesGroup")
-                        .WithMany("SubUserMessagesx")
-                        .HasForeignKey("SubMessageGroupId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("MessagesGroup");
                 });
 
             modelBuilder.Entity("ExpMedia.Domain.TagUser", b =>
@@ -1020,6 +870,8 @@ namespace ExpMedia.Persistence.Migrations
 
                     b.Navigation("ListOfToBlockUser");
 
+                    b.Navigation("MessageToUsers");
+
                     b.Navigation("NotifyToUser");
 
                     b.Navigation("SharingActivitiesUsers");
@@ -1030,21 +882,6 @@ namespace ExpMedia.Persistence.Migrations
             modelBuilder.Entity("ExpMedia.Domain.Comment", b =>
                 {
                     b.Navigation("CommentReactions");
-                });
-
-            modelBuilder.Entity("ExpMedia.Domain.MessageTable", b =>
-                {
-                    b.Navigation("Messagesx");
-                });
-
-            modelBuilder.Entity("ExpMedia.Domain.MessagesGroup", b =>
-                {
-                    b.Navigation("SubMessageGroups");
-                });
-
-            modelBuilder.Entity("ExpMedia.Domain.SubMessageGroup", b =>
-                {
-                    b.Navigation("SubUserMessagesx");
                 });
 #pragma warning restore 612, 618
         }

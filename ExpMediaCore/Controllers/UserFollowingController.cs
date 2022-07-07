@@ -120,6 +120,7 @@ namespace ExpMediaCore.Controllers
             var followObj = await _context.UserFollowings
                 .Where(w=> w.UserToFollowId == user.Id)
                .FirstOrDefaultAsync(w => w.Id == followId);
+
             if(followObj != null)
             {
                 followObj.IsSeen = true;
@@ -196,10 +197,8 @@ namespace ExpMediaCore.Controllers
             return new ProfileView()
             {
                 UserProfiles = res,
-                /*                FollowedUserPosts = userPostIHadFollowed.Any(w => w.IsOnlyMe == false) && res.Any(w => w.IsFollower == true) ? userPostIHadFollowed : null,*/
                 FollowedUserPosts = res.Any(w => w.IsFollower == true) ? userPostIHadFollowed : null,
                 MyPosts = res.Any(w => w.IsOwned == true) ? myPost : null,
-                /*      FollowedUserPosts = res.Any(w => w.UserId == user.Id) ? null : userPostIHadFollowed,*/
             };
 
         }

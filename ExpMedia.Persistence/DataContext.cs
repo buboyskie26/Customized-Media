@@ -55,6 +55,8 @@ namespace ExpMedia.Persistence
             .WithMany(i => i.CommentUser)
             .HasForeignKey(aa => aa.CommentCreatedUserId);
 
+
+
             /*            builder.Entity<SharingActivity>(b =>
                         {
                             b.HasKey(k => new { k.ActivityId });
@@ -82,21 +84,30 @@ namespace ExpMedia.Persistence
                     .WithMany(f => f.UsersTagged)
                     .HasForeignKey(o => o.UserToTagId);
             });
+
             builder.Entity<ActivityNotification>(b =>
             {
                 b.HasOne(o => o.NotifyTo)
                     .WithMany(f => f.NotifyToUser)
                     .HasForeignKey(o => o.NotifyToId);
             });
+
             builder.Entity<TagUser>()
                .HasOne(b => b.Activity)
                .WithMany(i => i.TagUsers)
                .HasForeignKey(aa => aa.ActivityId);
+
             builder.Entity<BlockUsers>()
             .HasOne(b => b.UserToBlock)
             .WithMany(i => i.ListOfToBlockUser)
             .HasForeignKey(aa => aa.UserToBlockId);
 
+/*            builder.Entity<Messages>(b =>
+            {
+                b.HasOne(o => o.MessageToUser)
+                    .WithMany(f => f.MessageToUsers)
+                    .HasForeignKey(o => o.MessageToUserId);
+            });*/
 
             base.OnModelCreating(builder);
 
@@ -112,5 +123,10 @@ namespace ExpMedia.Persistence
         public DbSet<BlockUsers> BlockUsersx { get; set; }
         public DbSet<TagUser> TagUsers { get; set; }
         public DbSet<ActivityNotification> ActivityNotifications { get; set; }
+        public DbSet<Messages> Messagesx { get; set; }
+        public DbSet<MessageTable> MessageTables { get; set; }
+        public DbSet<MessagesGroup> MessagesGroups { get; set; }
+        public DbSet<SubMessageGroup> SubMessageGroups { get; set; }
+        public DbSet<SubUserMessages> SubUserMessages { get; set; }
     }
 }
