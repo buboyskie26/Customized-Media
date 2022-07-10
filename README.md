@@ -2,7 +2,7 @@
 Core functionalities of twitter-facebook
 
 ### Simple Social Site
-For the sake of having fun and for being curious on the web. I decided to explore something and found out that social media is the great way to spend my time so I dived into it and in order for me to enchance my .Net Core Web Api, I created this simple Social network which has a core functionality of social media such as.
+For the sake of having fun, I decided to explore something great. Suddenly, I found out that social media is one of the  great way to spend my time so instead of using different social media sites for having fun. I decided to dived into it and make the core functionalities that served as my training in order for me to enchance my skills in .Net Core Web Api, I created this simple Social network which has a core functionality of social media such as.
 
 - Creating a feed
 - Creating an activity
