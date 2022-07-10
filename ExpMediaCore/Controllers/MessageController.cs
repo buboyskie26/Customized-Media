@@ -11,6 +11,7 @@ using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace ExpMediaCore.Controllers
@@ -22,7 +23,6 @@ namespace ExpMediaCore.Controllers
         private readonly DataContext _context;
         private readonly UserManager<AppUser> _userManager;
         private readonly IMessage _message;
-
         public MessageController(DataContext context, UserManager<AppUser> userManager,
             IMessage message)
         {
@@ -122,7 +122,8 @@ namespace ExpMediaCore.Controllers
         public async Task<ActionResult<InboxView>> UserIHadFollowed([FromQuery] FilterFollowingsDTO dto)
         {
             var user = await _userManager.GetUserAsync(User);
-
+            var a = user.Id;
+            var b= _message.GetUserId();
             return await _message.GetUserIHadFollowed(user.Id, dto);
         }
 
@@ -197,65 +198,122 @@ namespace ExpMediaCore.Controllers
 
             return NotFound();
         }
+
         // Deleting my message to group chat.
-        [HttpDelete("{subUserMessageId}")]
+        [HttpDelete("removingMyMessage/{subUserMessageId}")]
         public async Task<ActionResult> DeleteMessage(int subUserMessageId)
         {
             var user = await _userManager.GetUserAsync(User);
-
-            var messageObj = await _context.SubUserMessages
-                .Include(w=> w.SubMessageGroup)
-                .Where(w=> w.SubMessageGroup.MessageToUserId == user.Id)
-                .FirstOrDefaultAsync(w => w.Id == subUserMessageId);
-
-            if (messageObj != null)
+ 
+            var (messageBody, checkIfUserMessageExistsd) = await _message.DeleteMessage(user.Id, subUserMessageId);
+            if (checkIfUserMessageExistsd)
             {
-                _context.SubUserMessages.Remove(messageObj);
-                await _context.SaveChangesAsync();
+                return Ok($"{messageBody} message has been removed.");
 
-                return Ok("Message Removed");
             }
 
-            return NotFound();
+            return BadRequest("Message Id doesnt exists");
         }
 
-        [HttpDelete("{subMessageGroupId}")]
+        [HttpDelete("leavingTheGroup/{subMessageGroupId}")]
         public async Task<ActionResult> LeftTheGroup(int subMessageGroupId)
         {
             var user = await _userManager.GetUserAsync(User);
+            bool checkIfUserGroupExistss = await _message.LeeavingTheGroup(user.Id, subMessageGroupId);
+            if (checkIfUserGroupExistss)
+                return Ok("You Left the group.");
+            else
+                return BadRequest("Bad Group.");
 
-            var subMessage = await _context.SubMessageGroups
-                .Where(w => w.MessageToUserId == user.Id)
-                .FirstOrDefaultAsync(w => w.Id == subMessageGroupId);
+            return NotFound();
+        }
+        // Group Chat Users other could add other users.
+        [HttpPost("addOtherUsersInTheGroup")]
+        public async Task<ActionResult> AddOtherUsersInTheGroup([FromForm] AddingUserToTheGroupCreation dto)
+        {
+            var user = await _userManager.GetUserAsync(User);
 
-            if (subMessage != null)
+            // Get the group Id and check if you`re belong to the group.
+            var messageGroup = await _context.SubMessageGroups
+                .Include(w=> w.MessagesGroup)
+                .Where(w=> w.MessageToUserId == user.Id)
+                .FirstOrDefaultAsync(w => w.MessagesGroupId == dto.MessageGroupId);
+
+            var messageGroupExists = await _context.SubMessageGroups
+                .AnyAsync(w => w.MessagesGroupId == dto.MessageGroupId);
+
+            if(messageGroupExists == true)
             {
-                _context.SubMessageGroups.Remove(subMessage);
+                // All the remaining record in the db will be stayed in.
+                // All users you had selected will be added to the SubMessageGroup
+                // together with the remaining record in the db.
+
+                var p = (from t in dto.UserIds
+                         select new SubMessageGroup()
+                         {
+                             MessagesGroupId = messageGroup.MessagesGroupId,
+                             MessageToUserId = t,
+                         }).ToList();
+                _context.SubMessageGroups.UpdateRange(p);
                 await _context.SaveChangesAsync();
 
-                return Ok("You Left the group.");
+                return Ok($"Successfully added some users in the '{messageGroup.MessagesGroup.GroupName}' group chat.");
             }
             return NotFound();
         }
 
-        // Group Chat Users other could add other users.
-        [HttpPost("{subMessageGroupId}")]
-        public async Task<ActionResult> AddOtherUsersInTheGroup(int subMessageGroupId)
+        // Only the user who created the group chat could remove other user from the group.
+        [HttpDelete("removingOtherUserFromTheGroup")]
+        public async Task<ActionResult> RemovingOtherUserFromTheGroup(GroupMemberToDeleteDTO dto)
         {
             var user = await _userManager.GetUserAsync(User);
 
-            var subMessage = await _context.SubMessageGroups
-                .Where(w => w.MessageToUserId == user.Id)
-                .FirstOrDefaultAsync(w => w.Id == subMessageGroupId);
+            // Only admin could remove
+            var groupMemberToDelete = await _context.SubMessageGroups
+                .Include(w=> w.MessagesGroup)
+                .Include(w=> w.MessageToUser)
+                .Where(w=> w.MessagesGroup.UserMadeById == user.Id)
+                .Where(w=> w.MessageToUserId != user.Id)
+              .FirstOrDefaultAsync(w => w.Id == dto.SubMessageGroupId);
 
-            if (subMessage != null)
+            // Check if the user is the one who created the group
+            var messageGroupAdmin = await _context.SubMessageGroups
+                .Include(w=> w.MessagesGroup)
+                .Where(w=> w.MessagesGroup.UserMadeById == user.Id)
+                .AnyAsync(w => w.MessagesGroupId == dto.MessageGroupId);
+
+            // Admin should not remove himself
+           
+            if (messageGroupAdmin && groupMemberToDelete != null)
             {
-                _context.SubMessageGroups.Remove(subMessage);
+
+                _context.SubMessageGroups.Remove(groupMemberToDelete);
                 await _context.SaveChangesAsync();
 
-                return Ok("You Left the group.");
+                return Ok($"{groupMemberToDelete.MessageToUser.FirstName} {groupMemberToDelete.MessageToUser.LastName} has been removed from the {groupMemberToDelete.MessagesGroup.GroupName} group.");
             }
-            return NotFound();
+            else  
+            {
+                return BadRequest("Admin could`nt removed himself. Try Deleting the Group instead.");
+            }
+
+            return NoContent();
+        }
+
+        // Only the user who created the group chat could remove other user from the group.
+        [HttpDelete("rangeRemovingOtherUserFromTheGroup")]
+        public async Task<ActionResult> RangedRemovingOtherUserFromTheGroup([FromForm] GroupMemberToDeleteRangeDTO dto)
+        {
+            var user = await _userManager.GetUserAsync(User);
+
+            var messageGroupAdminx = await _message.RangedDeleteOtherUserFromTheGroup(user.Id, dto);
+            if (messageGroupAdminx)
+            {
+                return Ok("Successfully removed");
+            }
+
+
+            return NoContent();
         }
     }
 }

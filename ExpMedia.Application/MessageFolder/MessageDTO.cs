@@ -39,6 +39,7 @@ namespace ExpMedia.Application.MessageFolder
     public class MyGroupChat
     {
         public string GroupName { get; set; }
+        public string Username { get; set; }
         public int MessagesGroupId { get; set; }
         public int NumberOfUser { get; set; }
         public string LatestChat { get; set; }
@@ -76,10 +77,12 @@ namespace ExpMedia.Application.MessageFolder
     public class MyGroupDetails
     {
         public int SubMessageGroupId { get; set; }
+        public int MessageGroupId { get; set; }
         public string GroupName { get; set; }
     }
     public class SpecificGroupMessages : CommonUsers
     {
+        public int SubMessageGroupId { get; set; }
         public int SubUserMessageId { get; set; }
         public string UserProfile { get; set; }
         public string UserMessage { get; set; }

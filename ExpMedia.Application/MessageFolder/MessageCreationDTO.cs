@@ -18,5 +18,10 @@ namespace ExpMedia.Application.MessageFolder
         public string MessageToId { get; set; }
         public string Body { get; set; }
     }
-  
+    public class AddingUserToTheGroupCreation
+    {
+        public List<string> UserIds { get; set; }
+        public int MessageGroupId { get; set; }
+
+    }
 }

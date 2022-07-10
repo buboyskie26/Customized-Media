@@ -4,10 +4,12 @@ using ExpMedia.Application.MessageGroupFolder;
 using ExpMedia.Domain;
 using ExpMedia.Persistence;
 using ExpMediaCore.Repository.IService;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace ExpMediaCore.Repository.Service
@@ -15,10 +17,11 @@ namespace ExpMediaCore.Repository.Service
     public class MessageRepository : IMessage
     {
         private readonly DataContext _context;
-
-        public MessageRepository(DataContext context)
+        private readonly IHttpContextAccessor _httpContextAccessor;
+        public MessageRepository(DataContext context, IHttpContextAccessor httpContextAccessor)
         {
             _context = context;
+            _httpContextAccessor = httpContextAccessor;
         }
 
         public async Task<Tuple<bool, bool>> PostCreateMessageTo(string userId, MessageTableCreationDTO dto)
@@ -208,7 +211,6 @@ namespace ExpMediaCore.Repository.Service
 
             return joiningUserHadTableIdAndUserHadnt.OrderByDescending(w => w.MessageTableId).ToList();
         }
-
         public async Task<InboxView> GetUserIHadFollowed(string userId, FilterFollowingsDTO dto)
         {
             var userFollowingQuery = _context.UserFollowings.AsQueryable();
@@ -241,7 +243,8 @@ namespace ExpMediaCore.Repository.Service
 
             // Get All the SubUserMessages who has the same GroupId to the latestChat.MessagesGroupId
             var groupMessages = _context.SubUserMessages
-                .Include(w => w.SubMessageGroup).ThenInclude(w => w.SubUserMessagesx)
+                .Include(w => w.SubMessageGroup).ThenInclude(w => w.MessageToUser)
+             /*   .Include(w => w.SubMessageGroup).ThenInclude(w => w.SubUserMessagesx)*/
                 .Include(w => w.SubMessageGroup).ThenInclude(w => w.MessagesGroup).ThenInclude(w => w.SubMessageGroups)
                 .Where(w => latestChat.Contains(w.SubMessageGroup.MessagesGroupId))
                 .OrderByDescending(w => w.MessageCreation)
@@ -253,6 +256,7 @@ namespace ExpMediaCore.Repository.Service
                 {
                     GroupName = t.SubMessageGroup.MessagesGroup.GroupName,
                     LatestChat = t.Body,
+                    Username = t.SubMessageGroup.MessageToUser.FirstName+" "+ t.SubMessageGroup.MessageToUser.LastName,
                     MessagesGroupId = t.SubMessageGroup.MessagesGroupId,
                     NumberOfUser = t.SubMessageGroup.SubUserMessagesx.Count()
                 })
@@ -264,14 +268,12 @@ namespace ExpMediaCore.Repository.Service
                 MyGroupChats = OuterGroupChatView
             };
         }
-
         private static IQueryable<UserFollowing> GetUsername(FilterFollowingsDTO dto, IQueryable<UserFollowing> userFollowingQuery)
         {
             return userFollowingQuery.Where(w => w.UserToFollow.FirstName.ToLower()
                                 .Contains(dto.Username.ToLower())
                                 || w.UserToFollow.LastName.ToLower().Contains(dto.Username.ToLower()));
         }
-
         public async Task<List<MessageDTO>> GetMessageFromUserId(string userId, string chatUserId)
         {
             var messageTo = _context.MessageTables
@@ -336,7 +338,6 @@ namespace ExpMediaCore.Repository.Service
 
             return oneToOneMessageList;
         }
-
         public async Task<MessageToGroupPostGetView> GetMessageToGroupPostGet(string userId, int messagesGroupsId)
         {
             var groupMessageDetails = new List<SpecificGroupMessages>();
@@ -376,7 +377,8 @@ namespace ExpMediaCore.Repository.Service
                                                  Username = subMessage.MessageToUser.FirstName + " " + subMessage.MessageToUser.LastName,
                                                  UserMessage = userMessage.Body,
                                                  UserProfile = subMessage.MessageToUser.ImageUrl,
-                                                 SubUserMessageId = subMessage.Id
+                                                 SubUserMessageId = userMessage.Id,
+                                                 SubMessageGroupId = subMessage.Id
                                              }).OrderByDescending(w => w.MessageCreation)
                   .AsNoTracking().ToListAsync();
             }
@@ -392,17 +394,17 @@ namespace ExpMediaCore.Repository.Service
                 groupDetails = new MyGroupDetails()
                 {
                     GroupName = myChatResult.MessagesGroup.GroupName,
-                    SubMessageGroupId = myChatResult.Id
+                    SubMessageGroupId = myChatResult.Id,
+                    MessageGroupId = myChatResult.MessagesGroupId
                 };
             }
 
             return new MessageToGroupPostGetView()
             {
                 TheGroupMessages = groupMessageDetails,
-                MyGroupDetails = groupDetails
+                MyGroupDetails = groupDetails,
             };
         }
-
         public async Task<MessagesGroup> PostCreateGroupMessage(string userId, SubMessageGroupCreationDTO dto)
         {
             /* var otherIds = await _context.SubMessageGroups
@@ -483,7 +485,6 @@ namespace ExpMediaCore.Repository.Service
             }
             return r;
         }
-
         public async Task<List<string>> CheckMyGroupChatId(string userId)
         {
             var otherIds = await _context.SubMessageGroups
@@ -515,7 +516,6 @@ namespace ExpMediaCore.Repository.Service
                             return BadRequest("You have already created a group with the same users.");
                         }*/
         }
-
         public async Task<bool> PostMessageToGroup(string userId, MessageToGroupCreation dto)
         {
             var checkAlignedUserToMessage = await _context.SubMessageGroups
@@ -540,6 +540,70 @@ namespace ExpMediaCore.Repository.Service
 
             }
             return checkAlignedUserToMessage;
+        }
+        public string GetUserId() => _httpContextAccessor.HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        public async Task<Tuple<string, bool>> DeleteMessage(string userId, int subUserMessageId)
+        {
+            // Check if the user removing his message to the specific group chat id
+            var messageObj = await _context.SubUserMessages
+                .Include(w => w.SubMessageGroup)
+                .Where(w => w.SubMessageGroup.MessageToUserId == userId)
+                .FirstOrDefaultAsync(w => w.Id == subUserMessageId);
+ 
+            var checkIfUserMessageExists = await _context.SubUserMessages
+                .AnyAsync(w => w.Id == subUserMessageId);
+
+            if (messageObj != null && checkIfUserMessageExists)
+            {
+                _context.SubUserMessages.Remove(messageObj);
+                await _context.SaveChangesAsync();
+
+               /* return Ok($"{messageObj.Body} message has been removed.");*/
+            }
+
+            var result = new Tuple<string,bool>(messageObj?.Body, checkIfUserMessageExists);
+            return await Task.FromResult(result);
+
+        }
+        public async Task<bool> LeeavingTheGroup(string userId, int subMessageGroupId)
+        {
+            var subMessage = await _context.SubMessageGroups
+                 .Where(w => w.MessageToUserId == userId)
+                 .FirstOrDefaultAsync(w => w.Id == subMessageGroupId);
+
+            var checkIfUserGroupExists = await _context.SubMessageGroups
+              .AnyAsync(w => w.Id == subMessageGroupId);
+
+            if (subMessage != null && checkIfUserGroupExists)
+            {
+                _context.SubMessageGroups.Remove(subMessage);
+                await _context.SaveChangesAsync();
+
+                /*return Ok("You Left the group.");*/
+            }
+            return checkIfUserGroupExists;
+        }
+        public async Task<bool> RangedDeleteOtherUserFromTheGroup(string userId, GroupMemberToDeleteRangeDTO dto)
+        {
+            var messageGroupAdmin = await _context.SubMessageGroups
+                 .Include(w => w.MessagesGroup)
+                 .Where(w => w.MessagesGroup.UserMadeById == userId)
+                 .AnyAsync(w => w.MessagesGroupId == dto.MessageGroupId);
+
+            if (messageGroupAdmin)
+            {
+                // Remove Range user from the group 
+                var subMessages = (from t in dto.SubMessageGroupId
+                                   select new SubMessageGroup()
+                                   {
+                                       MessagesGroupId = dto.MessageGroupId,
+                                       Id = t,
+                                   }).ToList();
+                _context.SubMessageGroups.RemoveRange(subMessages);
+                await _context.SaveChangesAsync();
+            }
+            return messageGroupAdmin;
         }
     }
 }
